@@ -93,14 +93,14 @@ export class Article {
   static async createArticle(
     title: string,
     content: string,
-    image: string,
+    image: string | null,
     authorId: string,
     categoryId: string
   ): Promise<any> {
-    validateInput(title, content, image);
+    validateInput(title, content, image || null);
     title = sanitizeInput(title);
     content = sanitizeInput(content);
-    image = sanitizeInput(image);
+    image = image ? sanitizeInput(image) : ''; 
     const id = uuidv4();
     try {
       const [rows] = await (

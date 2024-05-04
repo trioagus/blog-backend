@@ -5,11 +5,7 @@ export class ArticleController {
   static async getArticles(req: Request, res: Response): Promise<void> {
     try {
       const articles = await ArticleService.getArticles();
-      res.status(200).json({
-        code: 200,
-        message: "Success",
-        data: articles,
-      });
+      res.status(200).json(Array.isArray(articles) ? articles : []);
     } catch (error) {
       console.error("Get Articles Error:", error);
       res.status(500).json({
@@ -23,11 +19,7 @@ export class ArticleController {
     try {
       const { id } = req.params;
       const article = await ArticleService.getArticleById(id);
-      res.status(200).json({
-        code: 200,
-        message: "Success",
-        data: article,
-      });
+      res.status(200).json(Array.isArray(article) ? article[0] : article);
     } catch (error) {
       console.error("Get Article Error:", error);
       res.status(500).json({

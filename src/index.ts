@@ -2,6 +2,7 @@ import express, { Express, Request, Response } from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import path from "path";
+import cookieParser from "cookie-parser";
 
 import Auth from "./routes/auth";
 import User from "./routes/user";
@@ -15,13 +16,14 @@ const app: Express = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(cookieParser());
 app.use("/auth", Auth);
 app.use("/user", User);
 app.use("/category", Category);
 app.use("/comment", Comment);
 app.use("/article", Article);
 
-const port = process.env.PORT || 3003;
+const port = process.env.PORT;
 
 app.get("/", (req: Request, res: Response) => {
   res.send("Express + TypeScript Server");

@@ -49,7 +49,7 @@ export class ArticleService {
   static async createArticle(
     title: string,
     content: string,
-    image: string,
+    image: string | null,
     authorId: string,
     categoryId: string
   ): Promise<any> {
@@ -57,7 +57,7 @@ export class ArticleService {
       const createdArticle = await Article.createArticle(
         title,
         content,
-        image,
+        image ? image : null,
         authorId,
         categoryId
       );
