@@ -1,48 +1,32 @@
 import { User } from "../model/user";
+import { UserType } from "../types/userType";
+import { userValidation } from "../validation/userValidation";
 import bcrypt from "bcrypt";
-import { z } from "zod";
 import jwt from "jsonwebtoken";
 import { Response } from "express";
 
-type UserType = {
-  id: string;
-  username: string;
-  email: string;
-  password: string;
-  role?: string;
-};
-
-const userSchema = z.object({
-  id: z.string(),
-  username: z.string().min(3).max(50),
-  email: z.string().email(),
-  password: z
-    .string()
-    .min(8)
-    .regex(/^(?=.*[a-zA-Z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/),
-  role: z.string().optional(),
-});
-
 export class AuthService {
-  static async Register(user: UserType): Promise<UserType> {
+  static async Register(user: UserType): Promise<Omit<UserType, "password">> {
     try {
-      const validatedUser = userSchema.parse(user);
+      const { error } = userValidation.parse(user);
+      
+      if (error) {
+        throw new Error(error.details[0].message);
+      }
   
-      const isEmailRegistered = await User.getUserByEmail(validatedUser.email);
+      const isEmailRegistered = await User.getUserByEmail(user.email);
       if (isEmailRegistered) {
         throw new Error("Email sudah terdaftar");
       }
   
-      const hashedPassword = await bcrypt.hash(validatedUser.password, 10);
+      const hashedPassword = await bcrypt.hash(user.password, 10);
   
-      const isAdminEmail = ["admin1@gmail.com", "admin2@gmail.com"].includes(
-        validatedUser.email
-      );
+      const isAdminEmail = ["admin1@gmail.com", "admin2@gmail.com"].includes(user.email);
       const role = isAdminEmail ? "admin" : "user";
   
       const createdUser = await User.createUser(
-        validatedUser.username,
-        validatedUser.email,
+        user.username,
+        user.email,
         hashedPassword,
         role
       );
@@ -51,7 +35,6 @@ export class AuthService {
         id: createdUser.id,
         username: createdUser.username,
         email: createdUser.email,
-        password: createdUser.password,
         role: createdUser.role,
       };
     } catch (error: any) {
@@ -60,52 +43,50 @@ export class AuthService {
   }
   
 
-  static async Login(email: string, password: string): Promise<string> {
+  static async Login(email: string, password: string) {
     try {
       const user = await User.getUserByEmail(email);
-  
+
       if (!user) {
         throw new Error("Pengguna tidak ditemukan");
       }
-  
+
       if (!user.password) {
         throw new Error("Kata sandi tidak ditemukan");
       }
-  
-      const isValidPassword = await bcrypt.compare(password, user.password);
-  
-      if (!isValidPassword) {
-        throw new Error("Kata sandi tidak valid");
+
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
+        throw new Error("Kata sandi tidak cocok");
       }
-  
+
       const payload = {
         id: user.id,
         username: user.username,
-        email: user.email,
         role: user.role,
       };
-  
+
       const secret = process.env.JWT_SECRET;
-  
+
       if (!secret) {
-        throw new Error("Secret JWT tidak didefinisikan");
+        throw new Error("JWT_SECRET environment variable not set");
       }
-  
-      const token = jwt.sign(payload, secret, {
-        expiresIn: "7d",
-      });
-  
-      return token; // Mengembalikan token
+
+      const token = jwt.sign(payload, secret);
+
+      return {
+        user,
+        token,
+      };
     } catch (error: any) {
-      throw new Error(`Error saat masuk: ${error.message}`);
+      throw new Error(`Error logging in: ${error.message}`);
     }
   }
   
-  static async Logout(res: any): Promise<void> {
+  static async Logout(res: Response): Promise<void> {
     try {
       res.clearCookie("token");
       res.status(200).json({ message: "Berhasil keluar" });
-      return;
     } catch (error: any) {
       throw new Error(`Error saat keluar: ${error.message}`);
     }
